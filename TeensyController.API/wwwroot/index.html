@@ -1,0 +1,197 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Teensy Controller Web Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f7f7f7;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        h1, h3 {
+            text-align: center;
+        }
+
+        #telemetry {
+            background-color: #fff;
+            padding: 15px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+
+        .button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+            .button:hover {
+                background-color: #0056b3;
+            }
+
+        .solenoid-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .solenoid-card {
+            background-color: #fff;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+        }
+
+            .solenoid-card h4 {
+                margin: 0 0 10px 0;
+            }
+
+        .solenoid-button {
+            background-color: #28a745;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            margin: 3px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+            .solenoid-button.off {
+                background-color: #dc3545;
+            }
+
+            .solenoid-button:hover {
+                opacity: 0.8;
+            }
+    </style>
+    <script>
+        // Fetch telemetry from the REST API and display it on the page.
+        async function getTelemetry() {
+            try {
+                const response = await fetch('/Telemetry');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                document.getElementById('telemetry').textContent = data.telemetry;
+            } catch (error) {
+                console.error('Error fetching telemetry:', error);
+            }
+        }
+
+        // Send a command to the REST API.
+        async function sendCommand(command) {
+            try {
+                const response = await fetch('/Telemetry/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Command: command })
+                });
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                console.log("Command sent: " + data.command);
+            } catch (error) {
+                console.error('Error sending command:', error);
+            }
+        }
+
+        // Convenience functions for common commands.
+        function arm() {
+            sendCommand('a');
+        }
+        function disarm() {
+            sendCommand('d');
+        }
+        function sendCustomCommand() {
+            const cmd = document.getElementById('commandInput').value.trim();
+            if (cmd) {
+                sendCommand(cmd);
+            }
+        }
+
+        // Solenoid control functions.
+        function solenoidOn(channel) {
+            // Command format: "s{channel}1" to energize the solenoid.
+            sendCommand(`s${channel}1`);
+        }
+        function solenoidOff(channel) {
+            // Command format: "s{channel}0" to de-energize the solenoid.
+            sendCommand(`s${channel}0`);
+        }
+
+        // Auto-refresh telemetry every second.
+        window.addEventListener('load', () => {
+            getTelemetry();
+            setInterval(getTelemetry, 10);
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Teensy Controller Web Interface</h1>
+
+        <!-- Telemetry Section -->
+        <section>
+            <h3>Telemetry</h3>
+            <div id="telemetry">No telemetry yet.</div>
+            <div style="text-align: center;">
+                <button class="button" onclick="getTelemetry()">Refresh Telemetry</button>
+            </div>
+        </section>
+
+        <hr>
+
+        <!-- General Commands Section -->
+        <section>
+            <h3>Commands</h3>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button class="button" onclick="arm()">Arm</button>
+                <button class="button" onclick="disarm()">Disarm</button>
+            </div>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <input type="text" id="commandInput" placeholder="Enter solenoid command e.g., s51" style="padding:8px; font-size:14px;">
+                <button class="button" onclick="sendCustomCommand()">Send Command</button>
+            </div>
+        </section>
+
+        <hr>
+
+        <!-- Solenoid Controls Section -->
+        <section>
+            <h3>Solenoid Controls</h3>
+            <div class="solenoid-grid">
+                <!-- Create 16 solenoid control cards dynamically -->
+                <script>
+                    // Dynamically generate solenoid cards for channels 1 to 16.
+                    for (let i = 1; i <= 16; i++) {
+                        document.write(`
+                              <div class="solenoid-card">
+                                <h4>Solenoid ${i}</h4>
+                                <button class="solenoid-button" onclick="solenoidOn(${i})">ON</button>
+                                <button class="solenoid-button off" onclick="solenoidOff(${i})">OFF</button>
+                              </div>
+                            `);
+                    }
+                </script>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
