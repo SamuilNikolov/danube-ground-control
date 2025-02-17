@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.IO.Ports;
+using System.Text;
 using System.Threading;
 
 namespace TeensyController.API.Services
@@ -24,6 +25,8 @@ namespace TeensyController.API.Services
         private readonly object _telemetryLock = new object();
         // Holds the most recent telemetry string.
         private string _latestTelemetry = "";
+        // Holds the previous telemetry timestamp in milliseconds (initially -1 means “not set”).
+        private long _previousTimestamp = -1;
 
         /// <summary>
         /// Public property to get the latest telemetry data in a thread-safe manner.
@@ -93,6 +96,9 @@ namespace TeensyController.API.Services
         private void ReadLoop(object obj)
         {
             CancellationToken token = (CancellationToken)obj;
+            // Buffer to accumulate incoming data
+            StringBuilder buffer = new StringBuilder();
+
             while (!token.IsCancellationRequested)
             {
                 try
@@ -101,25 +107,81 @@ namespace TeensyController.API.Services
                     string data = _serialPort.ReadExisting();
                     if (!string.IsNullOrEmpty(data))
                     {
-                        // Split the data into lines.
-                        string[] lines = data.Split(new[] { "\n" }, StringSplitOptions.RemoveEmptyEntries);
-                        if (lines.Length > 0)
+                        // Append new data to the buffer.
+                        buffer.Append(data);
+
+                        // Process all complete telemetry lines (i.e. lines ending with '\n').
+                        string allData = buffer.ToString();
+                        int newlineIndex;
+                        while ((newlineIndex = allData.IndexOf('\n')) != -1)
                         {
-                            // Update with only the most recent telemetry.
-                            LatestTelemetry = lines[lines.Length - 1];
+                            // Extract one complete line.
+                            string completeLine = allData.Substring(0, newlineIndex).Trim();
+
+                            // Only update LatestTelemetry if the line is not empty.
+                            if (!string.IsNullOrEmpty(completeLine))
+                            {
+                                // Attempt to extract the timestamp from the telemetry.
+                                long currentTimestamp = 0;
+                                bool timestampParsed = false;
+                                // Assuming the telemetry is formatted like "TS:1952962 | ARM:0 | ..."
+                                var parts = completeLine.Split('|');
+                                foreach (var part in parts)
+                                {
+                                    string trimmedPart = part.Trim();
+                                    if (trimmedPart.StartsWith("TS:"))
+                                    {
+                                        string tsValue = trimmedPart.Substring(3).Trim();
+                                        if (long.TryParse(tsValue, out currentTimestamp))
+                                        {
+                                            timestampParsed = true;
+                                        }
+                                        break;
+                                    }
+                                }
+
+                                // If the timestamp was parsed, calculate the age (delta in ms)
+                                if (timestampParsed)
+                                {
+                                    long age = 0;
+                                    if (_previousTimestamp < 0)
+                                    {
+                                        // First telemetry received, so no previous timestamp exists.
+                                        age = 0;
+                                    }
+                                    else
+                                    {
+                                        age = currentTimestamp - _previousTimestamp;
+                                    }
+                                    // Update _previousTimestamp with the current telemetry's timestamp.
+                                    _previousTimestamp = currentTimestamp;
+
+                                    // Append the telemetry age.
+                                    completeLine += $" | AGE:{age}ms";
+                                }
+
+                                LatestTelemetry = completeLine;
+                            }
+
+                            // Remove the processed line (and the newline) from the data.
+                            allData = allData.Substring(newlineIndex + 1);
                         }
+
+                        // Clear the buffer and append any leftover incomplete data.
+                        buffer.Clear();
+                        buffer.Append(allData);
                     }
                 }
                 catch (TimeoutException)
                 {
-                    // Occasional timeouts can happen; just ignore them.
+                    // Ignore timeouts.
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine("ReadLoop exception: " + ex.Message);
                 }
 
-                // Sleep briefly to avoid hogging the CPU.
+                // Sleep briefly to reduce CPU usage.
                 Thread.Sleep(10);
             }
         }

@@ -5,7 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Retrieve the COM port from the command-line arguments.
 // If no argument is provided, default to "COM5".
 string portName = args.Length > 0 ? args[0] : "COM5";
-int baudRate = 115200; // Fixed baud rate
+int baudRate = 2000000; // Fixed baud rate
 
 Console.WriteLine($"Using COM port: {portName} at {baudRate} baud.");
 

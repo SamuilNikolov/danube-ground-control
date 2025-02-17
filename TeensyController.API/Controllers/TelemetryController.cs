@@ -166,6 +166,35 @@ namespace TeensyController.API.Controllers
             // Fire-and-forget the sequencer task so that the API remains responsive.
             Task.Run(async () =>
             {
+
+                _serialManager.SendCommand("s131");
+                await Task.Delay(5000);
+                _serialManager.SendCommand("s61");
+                await Task.Delay(50);
+                _serialManager.SendCommand("s31");
+                await Task.Delay(500);
+                _serialManager.SendCommand("s130");
+                await Task.Delay(3500);
+                _serialManager.SendCommand("s60");
+                _serialManager.SendCommand("s30");
+                await Task.Delay(1000);
+                _serialManager.SendCommand("s21");
+                await Task.Delay(4000);
+                _serialManager.SendCommand("s20");
+
+
+
+            });
+
+            return Ok("Sequencer command started");
+        }
+
+        [HttpGet("run")]
+        public IActionResult RunValves()
+        {
+            // Fire-and-forget the sequencer task so that the API remains responsive.
+            Task.Run(async () =>
+            {
                 const int solenoidCount = 16;
                 for (int j = 0; j < 5; j++)
                 {
@@ -186,7 +215,7 @@ namespace TeensyController.API.Controllers
                     }
                 }
                 // Turn on solenoids sequentially with a 50ms delay.
-               
+
             });
 
             return Ok("Sequencer command started");

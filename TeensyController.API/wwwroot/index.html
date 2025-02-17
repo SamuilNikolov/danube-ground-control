@@ -2,98 +2,324 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Teensy Controller Web Interface</title>
+    <title>Teensy Controller</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
     <style>
+        /* Global Styles */
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f7f7f7;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            overflow-y: auto;
         }
 
         .container {
-            max-width: 1200px;
-            margin: auto;
+            width: 100%;
+            padding: 20px;
         }
 
-        h1, h3 {
+        h1 {
             text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            text-shadow: 0 0 5px #32cd32;
+            margin-bottom: 10px;
         }
 
-        #telemetry {
-            background-color: #fff;
-            padding: 15px;
-            border: 2px solid #ccc;
-            border-radius: 5px;
+        h3 {
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            text-shadow: 0 0 3px #32cd32;
+            margin-bottom: 10px;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #333;
+            margin: 30px 0;
+        }
+        /* Telemetry Section */
+        .telemetry-section {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px #32cd32;
             margin-bottom: 20px;
-            min-height: 100px;
-            white-space: pre-wrap;
-            font-size: 14px;
         }
 
-        .button {
+        #telemetryDisplay {
+            font-family: monospace;
+            background: #000;
+            color: #32cd32;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px;
+            overflow-x: auto;
+        }
+        /* Voltage Section */
+        .voltage-section {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px #32cd32;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .voltage-info {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            max-width: 500px;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .battery-container {
+            width: 80%;
+            max-width: 500px;
+            height: 20px;
+            background-color: #2c2c2c;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .battery-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00ff7f, #32cd32);
+            transition: width 0.5s ease-out;
+        }
+        /* Command Section */
+        .command-section {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px #32cd32;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+            .command-section input[type="text"] {
+                padding: 8px;
+                font-size: 14px;
+                border-radius: 4px;
+                border: 1px solid #333;
+                background-color: #1e1e1e;
+                color: #e0e0e0;
+                margin-right: 5px;
+            }
+
+        .button, .solenoid-button {
             background-color: #007BFF;
             color: white;
             border: none;
             padding: 10px 20px;
-            margin: 5px;
             border-radius: 5px;
             cursor: pointer;
             font-size: 14px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            margin: 5px;
+            position: relative;
         }
 
-            .button:hover {
+            .button:hover, .solenoid-button:hover {
                 background-color: #0056b3;
+                transform: scale(1.05);
             }
-
-        .solenoid-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .solenoid-card {
-            background-color: #fff;
-            border: 2px solid #ccc;
-            border-radius: 5px;
-            padding: 10px;
-            text-align: center;
-        }
-
-            .solenoid-card h4 {
-                margin: 0 0 10px 0;
-            }
-
-        .solenoid-button {
-            background-color: #28a745;
-            border: none;
-            color: white;
-            padding: 5px 10px;
-            margin: 3px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-        }
 
             .solenoid-button.off {
                 background-color: #dc3545;
             }
-
-            .solenoid-button:hover {
-                opacity: 0.8;
+            /* Highlight active solenoid button with a glowing dot */
+            .solenoid-button.active:not(.off)::before {
+                content: "●";
+                color: #32cd32;
+                position: absolute;
+                left: -15px;
+                top: 50%;
+                transform: translateY(-50%);
             }
+
+            .solenoid-button.active.off::before {
+                content: "●";
+                color: #dc3545;
+                position: absolute;
+                left: -15px;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+
+        .system-status {
+            font-size: 1.1rem;
+            margin: 10px 0;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .status-armed {
+            background-color: #32cd32;
+        }
+
+        .status-disarmed {
+            background-color: #dc3545;
+        }
+        /* Solenoid Grid */
+        .solenoid-section {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px #32cd32;
+            margin-bottom: 20px;
+        }
+
+        .solenoid-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .solenoid-card {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 0 5px #32cd32;
+        }
+
+            .solenoid-card h4 {
+                margin-bottom: 10px;
+                font-family: 'Orbitron', sans-serif;
+            }
+
+        .solenoid-status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        /* Sequence Section */
+        .sequence-section {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px #32cd32;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+            .sequence-section input[type="text"] {
+                padding: 8px;
+                font-size: 14px;
+                border-radius: 4px;
+                border: 1px solid #333;
+                background-color: #1e1e1e;
+                color: #e0e0e0;
+                width: 80%;
+                max-width: 500px;
+                margin-right: 5px;
+            }
+        /* Responsive Single-Screen Layout */
+        @media (min-height: 800px) {
+            .container {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-around;
+            }
+        }
     </style>
     <script>
-        // Fetch telemetry from the REST API and display it on the page.
+        // Global State Variables
+        let systemArmed = false;
+        let solenoidStates = {};
+        for (let i = 1; i <= 16; i++) {
+            solenoidStates[i] = false;
+        }
+
+        // Update System Status Indicator
+        function updateSystemStatus() {
+            const statusEl = document.getElementById('systemStatus');
+            statusEl.innerHTML = systemArmed
+                ? '<span class="status-indicator status-armed"></span> Armed'
+                : '<span class="status-indicator status-disarmed"></span> Disarmed';
+        }
+
+        // Update Solenoid Status for a channel
+        function updateSolenoidStatus(channel) {
+            // Update status text
+            const statusTextEl = document.getElementById(`solenoid-status-${channel}`);
+            statusTextEl.textContent = solenoidStates[channel] ? 'ON' : 'OFF';
+            // Update active button highlighting
+            const onBtn = document.getElementById(`solenoid-on-${channel}`);
+            const offBtn = document.getElementById(`solenoid-off-${channel}`);
+            if (solenoidStates[channel]) {
+                onBtn.classList.add("active");
+                offBtn.classList.remove("active");
+            } else {
+                onBtn.classList.remove("active");
+                offBtn.classList.add("active");
+            }
+        }
+
+        // Fetch telemetry from the REST API and update telemetry display,
+        // voltage info, armed status, and solenoid statuses.
         async function getTelemetry() {
             try {
                 const response = await fetch('/Telemetry');
                 if (!response.ok) throw new Error('Network response was not ok');
                 const data = await response.json();
-                document.getElementById('telemetry').textContent = data.telemetry;
+                // Update telemetry display (full incoming line)
+                if (data.telemetry !== undefined) {
+                    document.getElementById('telemetryDisplay').innerText = data.telemetry;
+                }
+                // Update battery bar & voltage info
+                if (data.battery !== undefined) {
+                    updateBatteryBar(data.battery);
+                }
+                if (data.batteryVoltage !== undefined) {
+                    document.getElementById('batteryVoltage').textContent = `Battery Voltage: ${data.batteryVoltage}V`;
+                }
+                if (data.armingVoltage !== undefined) {
+                    document.getElementById('armingVoltage').textContent = `Arming Voltage: ${data.armingVoltage}V`;
+                }
+                // Update armed status
+                if (data.systemArmed !== undefined) {
+                    systemArmed = data.systemArmed;
+                    updateSystemStatus();
+                }
+                // Update solenoid statuses
+                if (data.solenoids !== undefined) {
+                    for (let channel in data.solenoids) {
+                        solenoidStates[channel] = data.solenoids[channel];
+                        updateSolenoidStatus(channel);
+                    }
+                }
             } catch (error) {
                 console.error('Error fetching telemetry:', error);
             }
+        }
+
+        // Update battery bar based on a percentage value.
+        function updateBatteryBar(percentage) {
+            const batteryBar = document.getElementById('batteryBar');
+            batteryBar.style.width = `${percentage}%`;
         }
 
         // Send a command to the REST API.
@@ -112,80 +338,115 @@
             }
         }
 
-        // Convenience functions for common commands.
+        // Command Functions
         function arm() {
             sendCommand('a');
+            systemArmed = true;
+            updateSystemStatus();
         }
         function disarm() {
             sendCommand('d');
+            systemArmed = false;
+            updateSystemStatus();
+        }
+        function estop() {
+            sendCommand('e');
+            updateSystemStatus();
         }
         function sendCustomCommand() {
             const cmd = document.getElementById('commandInput').value.trim();
-            if (cmd) {
-                sendCommand(cmd);
-            }
+            if (cmd) sendCommand(cmd);
         }
 
-        // Solenoid control functions.
+        // Solenoid Control Functions
         function solenoidOn(channel) {
-            // Command format: "s{channel}1" to energize the solenoid.
             sendCommand(`s${channel}1`);
+            solenoidStates[channel] = true;
+            updateSolenoidStatus(channel);
         }
         function solenoidOff(channel) {
-            // Command format: "s{channel}0" to de-energize the solenoid.
             sendCommand(`s${channel}0`);
+            solenoidStates[channel] = false;
+            updateSolenoidStatus(channel);
+        }
+
+        // Sequence Upload Function
+        function uploadSequence() {
+            const seq = document.getElementById('sequenceInput').value.trim();
+            if (seq) {
+                sendCommand(seq);
+            }
         }
 
         // Auto-refresh telemetry every second.
         window.addEventListener('load', () => {
+            updateSystemStatus();
+            for (let i = 1; i <= 16; i++) {
+                updateSolenoidStatus(i);
+            }
             getTelemetry();
-            setInterval(getTelemetry, 10);
+            setInterval(getTelemetry, 1);
         });
     </script>
 </head>
 <body>
     <div class="container">
-        <h1>Teensy Controller Web Interface</h1>
+        <h1>Teensy Controller</h1>
 
         <!-- Telemetry Section -->
-        <section>
+        <section class="telemetry-section">
             <h3>Telemetry</h3>
-            <div id="telemetry">No telemetry yet.</div>
-            <div style="text-align: center;">
-                <button class="button" onclick="getTelemetry()">Refresh Telemetry</button>
+            <div id="telemetryDisplay">Waiting for telemetry...</div>
+        </section>
+
+        <!-- Voltage Section -->
+        <section class="voltage-section">
+            <h3>Voltage Status</h3>
+            <div class="voltage-info">
+                <div id="batteryVoltage">Battery Voltage: --V</div>
+                <div id="armingVoltage">Arming Voltage: --V</div>
+            </div>
+            <div class="battery-container">
+                <div id="batteryBar" class="battery-bar"></div>
             </div>
         </section>
 
-        <hr>
-
-        <!-- General Commands Section -->
-        <section>
+        <!-- Commands Section -->
+        <section class="command-section">
             <h3>Commands</h3>
-            <div style="text-align: center; margin-bottom: 20px;">
+            <div>
                 <button class="button" onclick="arm()">Arm</button>
                 <button class="button" onclick="disarm()">Disarm</button>
+                <button class="button" onclick="estop()">E-STOP</button>
             </div>
-            <div style="text-align: center; margin-bottom: 20px;">
-                <input type="text" id="commandInput" placeholder="Enter solenoid command e.g., s51" style="padding:8px; font-size:14px;">
-                <button class="button" onclick="sendCustomCommand()">Send Command</button>
+            <div class="system-status" id="systemStatus">
+                <span class="status-indicator status-disarmed"></span> Disarmed
             </div>
         </section>
 
-        <hr>
+        <!-- Sequence Upload Section -->
+        <section class="sequence-section">
+            <h3>Sequence Upload</h3>
+            <div>
+                <input type="text" id="sequenceInput" placeholder="Enter sequence command e.g., command:s11.50000.s21.25000.s31">
+                <button class="button" onclick="uploadSequence()">Upload Sequence</button>
+            </div>
+        </section>
 
         <!-- Solenoid Controls Section -->
-        <section>
+        <section class="solenoid-section">
             <h3>Solenoid Controls</h3>
             <div class="solenoid-grid">
-                <!-- Create 16 solenoid control cards dynamically -->
                 <script>
-                    // Dynamically generate solenoid cards for channels 1 to 16.
                     for (let i = 1; i <= 16; i++) {
                         document.write(`
                               <div class="solenoid-card">
-                                <h4>Solenoid ${i}</h4>
-                                <button class="solenoid-button" onclick="solenoidOn(${i})">ON</button>
-                                <button class="solenoid-button off" onclick="solenoidOff(${i})">OFF</button>
+                                <h4 contenteditable>Solenoid ${i}</h4>
+                                <div>
+                                  <button id="solenoid-on-${i}" class="solenoid-button" onclick="solenoidOn(${i})">ON</button>
+                                  <button id="solenoid-off-${i}" class="solenoid-button off" onclick="solenoidOff(${i})">OFF</button>
+                                </div>
+                                <p class="solenoid-status">Status: <span id="solenoid-status-${i}">OFF</span></p>
                               </div>
                             `);
                     }
